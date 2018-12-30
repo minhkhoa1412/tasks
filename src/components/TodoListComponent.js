@@ -1,19 +1,18 @@
 import React, {Component} from 'react';
 import {
     View, TouchableOpacity, FlatList,
-    Text, StyleSheet, Alert, TextInput,
-    Dimensions
+    Text, StyleSheet, Alert, TextInput
 } from 'react-native';
 import Swipeout from "react-native-swipeout";
 import ActionButton from 'react-native-action-button';
 import Modalize from 'react-native-modalize';
 
-import {queryAllTodo, insertNewTodo} from "../databases/allSchemas";
 import SearchBarComponent from "./SearchBarComponent";
 import HeaderComponent from "./HeaderComponent";
+import CheckBoxComponent from "./CheckBoxComponent";
 
 let FlatListItem = props => {
-    const {itemIndex, item, onPressItem} = props;
+    const {onDelete, item, onPressItem} = props;
 
     const showEditModal = () => {
 
@@ -33,7 +32,7 @@ let FlatListItem = props => {
                 {
                     text: 'Yes',
                     onPress: () => {
-
+                        onDelete(item)
                     },
                 }
             ],
@@ -60,9 +59,10 @@ let FlatListItem = props => {
             autoClose={true}
         >
             <View
-                style={{height: 50, justifyContent: 'center', alignItems: 'flex-start'}}
+                style={{flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center', backgroundColor: 'white'}}
                 onPress={onPressItem}>
-                <Text style={{color: 'black'}} key={item.id}>{itemIndex}</Text>
+                <CheckBoxComponent status={props.item.done} onPress={cb => props.onPress(props.item, cb)} />
+                <Text style={{color: 'black', fontSize: 16}} key={item.id}>{item.name}</Text>
             </View>
         </Swipeout>
     )
@@ -75,32 +75,51 @@ export default class TodoListComponent extends Component {
             todoLists: [
                 {
                     id: 1,
-                    name: 'test',
+                    name: 'Cho mèo ăn',
                     done: false,
                 },
                 {
                     id: 2,
-                    name: 'test1',
+                    name: 'Mua hạt cho mèo',
+                    done: false,
+                },
+                {
+                    id: 3,
+                    name: 'Cho mèo ỉa',
                     done: false,
                 }
             ],
             task: '',
         };
-        // this.reloadData();
-        // realm.addListener('change',() => {
-        //     this.reloadData();
-        // })
     }
 
-    // reloadData = () => {
-    //     queryAllTodo()
-    //         .then(todoLists => {
-    //             this.setState({todoLists})
-    //         })
-    //         .catch(error => {
-    //             this.setState({todoLists: []})
-    //         })
-    // };
+    componentDidMount(): void {
+        class Person {}
+        Person.schema = {
+            name: 'Todo',
+            primaryKey: 'id',
+            properties: {
+                id: 'int',
+                name: 'string',
+                done: {type: 'bool', default: false},
+            },
+        };
+
+        this.realm = new Realm({schema: [Person]});
+
+        this.queryAllData()
+    }
+
+    queryAllData = () => {
+        let allTodo = this.realm.objects('Todo');
+        allTodo.addListener((col) => {
+            this.setState({
+                todoLists: col
+            }, () => {
+                this.forceUpdate()
+            })
+        })
+    }
 
     modal = React.createRef();
 
@@ -116,6 +135,22 @@ export default class TodoListComponent extends Component {
         }
     };
 
+    test = (item,cb) => {
+        this.realm.write(() => {
+            this.realm.create('Todo',{
+                id: item.id,
+                done: !item.done
+            },true)
+        })
+        cb()
+    }
+
+    deleteData = (item) => {
+        this.realm.write(() => {
+            this.realm.delete(item)
+        })
+    }
+
     render() {
         return (
             <View style={styles.container}>
@@ -123,11 +158,14 @@ export default class TodoListComponent extends Component {
                 <SearchBarComponent/>
                 <FlatList
                     style={styles.flatList}
-                    data={[{name: 'bi'}, {name: 'bo'}]}
-                    renderItem={(item, index) => (
-                        <View style={{height: 50, width: 50}}>
-                            <Text style={{color: 'black', backgroundColor: 'red'}}>Hello, {item.name}</Text>
-                        </View>
+                    data={this.state.todoLists}
+                    extraData={this.state}
+                    renderItem={({item, index}) => (
+                        <FlatListItem
+                            onDelete={this.deleteData}
+                            item={item}
+                            onPress={this.test}
+                        />
                     )}
                     keyExtractor={(item) => item.name}
                 />
@@ -138,6 +176,8 @@ export default class TodoListComponent extends Component {
                     <View style={styles.modal}>
                         <Text style={styles.textModal}>Add your task</Text>
                         <TextInput
+                            autoCorrect={false}
+                            autoFocus
                             onChangeText={(text) => this.setState({task: text})}
                             value={this.state.task}
                             ref={this.textInputModal}
@@ -147,17 +187,18 @@ export default class TodoListComponent extends Component {
                                 if (this.state.task.trim() === "") {
                                     alert("Please enter your task first!");
                                 } else {
-                                    const newTodo = {
-                                        id: Math.floor(Date.now() / 1000),
-                                        name: this.state.task,
-                                        done: false,
-                                    };
-                                    insertNewTodo(newTodo)
-                                        .then(() => {
-                                            this.onClose();
-                                            this.reloadData();
+                                    this.realm.write(() => {
+                                        this.realm.create('Todo', {
+                                            id: Math.floor(Date.now() / 1000),
+                                            name: this.state.task,
+                                            done: false
                                         })
-                                        .catch(err => alert(err))
+                                    })
+                                    this.setState({
+                                        name: ''
+                                    }, () => {
+                                        this.modal.current.close()
+                                    })
                                 }
                             }}
                             style={styles.buttonSaveModal}>
