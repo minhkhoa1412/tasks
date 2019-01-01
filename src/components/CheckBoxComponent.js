@@ -13,7 +13,6 @@ export default class CheckBoxComponent extends Component {
         }
     }
 
-
     test = () => {
         this.props.onPress(() => {
             if(this.props.status) {

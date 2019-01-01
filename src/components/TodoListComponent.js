@@ -1,22 +1,22 @@
-import React, {Component} from 'react';
+import React, {Component} from 'react'
 import {
     View, TouchableOpacity, FlatList,
     Text, StyleSheet, Alert, TextInput
-} from 'react-native';
-import Swipeout from "react-native-swipeout";
-import ActionButton from 'react-native-action-button';
-import Modalize from 'react-native-modalize';
+} from 'react-native'
+import Swipeout from 'react-native-swipeout'
+import ActionButton from 'react-native-action-button'
+import Modalize from 'react-native-modalize'
 
-import SearchBarComponent from "./SearchBarComponent";
-import HeaderComponent from "./HeaderComponent";
-import CheckBoxComponent from "./CheckBoxComponent";
+import SearchBarComponent from './SearchBarComponent'
+import HeaderComponent from './HeaderComponent'
+import CheckBoxComponent from './CheckBoxComponent'
 
 let FlatListItem = props => {
-    const {onDelete, item, onPressItem} = props;
+    const {onDelete, onEdit, item, onPressItem} = props
 
     const showEditModal = () => {
-
-    };
+        onEdit(item)
+    }
 
     const showDeleteConfirmation = () => {
         Alert.alert(
@@ -27,20 +27,20 @@ let FlatListItem = props => {
                     text: 'No',
                     onPress: () => {
                     },
-                    style: 'cancel',
+                    style: 'cancel'
                 },
                 {
                     text: 'Yes',
                     onPress: () => {
                         onDelete(item)
-                    },
+                    }
                 }
             ],
             {
                 cancelable: true
             }
         )
-    };
+    }
 
     return (
         <Swipeout
@@ -59,59 +59,52 @@ let FlatListItem = props => {
             autoClose={true}
         >
             <View
-                style={{flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center', backgroundColor: 'white'}}
+                style={{
+                    flexDirection: 'row',
+                    justifyContent: 'flex-start',
+                    alignItems: 'center',
+                    backgroundColor: 'white'
+                }}
                 onPress={onPressItem}>
-                <CheckBoxComponent status={props.item.done} onPress={cb => props.onPress(props.item, cb)} />
+                <CheckBoxComponent status={props.item.done} onPress={cb => props.onPress(props.item, cb)}/>
                 <Text style={{color: 'black', fontSize: 16}} key={item.id}>{item.name}</Text>
             </View>
         </Swipeout>
     )
-};
+}
 
 export default class TodoListComponent extends Component {
     constructor(props) {
-        super(props);
+        super(props)
         this.state = {
-            todoLists: [
-                {
-                    id: 1,
-                    name: 'Cho mèo ăn',
-                    done: false,
-                },
-                {
-                    id: 2,
-                    name: 'Mua hạt cho mèo',
-                    done: false,
-                },
-                {
-                    id: 3,
-                    name: 'Cho mèo ỉa',
-                    done: false,
-                }
-            ],
+            todoLists: [],
+            taskId: 0,
             task: '',
-        };
+            isEdit: false
+        }
     }
 
     componentDidMount(): void {
-        class Person {}
+        class Person {
+        }
+
         Person.schema = {
             name: 'Todo',
             primaryKey: 'id',
             properties: {
                 id: 'int',
                 name: 'string',
-                done: {type: 'bool', default: false},
-            },
-        };
+                done: {type: 'bool', default: false}
+            }
+        }
 
-        this.realm = new Realm({schema: [Person]});
+        this.realm = new Realm({schema: [Person]})
 
         this.queryAllData()
     }
 
     queryAllData = () => {
-        let allTodo = this.realm.objects('Todo');
+        let allTodo = this.realm.objects('Todo')
         allTodo.addListener((col) => {
             this.setState({
                 todoLists: col
@@ -121,26 +114,26 @@ export default class TodoListComponent extends Component {
         })
     }
 
-    modal = React.createRef();
+    modal = React.createRef()
 
     onOpen = () => {
         if (this.modal.current) {
-            this.modal.current.open();
+            this.modal.current.open()
         }
-    };
+    }
 
     onClose = () => {
         if (this.modal.current) {
-            this.modal.current.close();
+            this.modal.current.close()
         }
-    };
+    }
 
-    test = (item,cb) => {
+    test = (item, cb) => {
         this.realm.write(() => {
-            this.realm.create('Todo',{
+            this.realm.create('Todo', {
                 id: item.id,
                 done: !item.done
-            },true)
+            }, true)
         })
         cb()
     }
@@ -148,6 +141,16 @@ export default class TodoListComponent extends Component {
     deleteData = (item) => {
         this.realm.write(() => {
             this.realm.delete(item)
+        })
+    }
+
+    editData = (item) => {
+        this.setState({
+            task: item.name,
+            taskId: item.id,
+            isEdit: true
+        }, () => {
+            this.onOpen()
         })
     }
 
@@ -162,6 +165,7 @@ export default class TodoListComponent extends Component {
                     extraData={this.state}
                     renderItem={({item, index}) => (
                         <FlatListItem
+                            onEdit={this.editData}
                             onDelete={this.deleteData}
                             item={item}
                             onPress={this.test}
@@ -170,6 +174,7 @@ export default class TodoListComponent extends Component {
                     keyExtractor={(item) => item.name}
                 />
                 <Modalize
+                    onClose={() => this.setState({task: '', isEdit: false})}
                     handlePosition='outside'
                     height='230'
                     ref={this.modal}>
@@ -184,21 +189,27 @@ export default class TodoListComponent extends Component {
                             style={styles.textInputModal}/>
                         <TouchableOpacity
                             onPress={() => {
-                                if (this.state.task.trim() === "") {
-                                    alert("Please enter your task first!");
+                                if (this.state.task.trim() === '') {
+                                    alert('Please enter your task first!')
                                 } else {
-                                    this.realm.write(() => {
-                                        this.realm.create('Todo', {
-                                            id: Math.floor(Date.now() / 1000),
-                                            name: this.state.task,
-                                            done: false
+                                    if(this.state.isEdit) {
+                                        this.realm.write(() => {
+                                            this.realm.create('Todo', {
+                                                id: this.state.taskId,
+                                                name: this.state.task
+                                            },true)
                                         })
-                                    })
-                                    this.setState({
-                                        name: ''
-                                    }, () => {
                                         this.modal.current.close()
-                                    })
+                                    } else {
+                                        this.realm.write(() => {
+                                            this.realm.create('Todo', {
+                                                id: Math.floor(Date.now() / 1000),
+                                                name: this.state.task,
+                                                done: false
+                                            })
+                                        })
+                                        this.modal.current.close()
+                                    }
                                 }
                             }}
                             style={styles.buttonSaveModal}>
@@ -208,7 +219,7 @@ export default class TodoListComponent extends Component {
                 </Modalize>
                 <ActionButton
                     onPress={() => {
-                        this.onOpen();
+                        this.onOpen()
                     }}
                     buttonColor="#1F88FF"/>
             </View>
@@ -222,31 +233,31 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start'
     },
     flatList: {
-        flex: 1,
+        flex: 1
     },
     search: {
-        height: "10%",
+        height: '10%'
     },
     modal: {
         height: 210,
         padding: 30,
-        justifyContent: 'space-between',
+        justifyContent: 'space-between'
     },
     textModal: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: 'bold'
     },
     textInputModal: {
         padding: 5,
         marginVertical: 20,
         borderWidth: 2,
         borderColor: '#1f88ff',
-        borderRadius: 5,
+        borderRadius: 5
     },
     buttonSaveModal: {
         padding: 10,
         backgroundColor: '#1f88ff',
         borderRadius: 5,
-        alignSelf: 'flex-end',
+        alignSelf: 'flex-end'
     }
-});
+})
